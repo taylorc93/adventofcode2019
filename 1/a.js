@@ -11,7 +11,7 @@ const add = (x, y) => x + y;
 const getFuelForMass = pipe(
   divideByThree,
   roundDown,
-  subtractTwo
+  subtractTwo,
 );
 
 const main = () => readInput(path.join(__dirname, './input.txt'))

@@ -1,3 +1,5 @@
+const path = require('path');
+
 const readInput = require('../utils/readInput');
 const { pipe } = require('../utils/functional');
 const { getFuelForMass, add } = require('./a');
@@ -8,7 +10,7 @@ const getFuelForFuelMass = (x) => x <= 0
 
 const getAllFuelRequired = pipe(
   getFuelForMass,
-  getFuelForFuelMass
+  getFuelForFuelMass,
 );
 
 const main = () => readInput(path.join(__dirname, './input.txt'))
@@ -17,5 +19,5 @@ const main = () => readInput(path.join(__dirname, './input.txt'))
   .reduce(add, 0);
 
 module.exports = {
-  main
+  main,
 };

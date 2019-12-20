@@ -8,10 +8,9 @@ const reduce = (cb, initial, items) => items.reduce(cb, initial);
 
 const pipe = (...fns) => (x) => fns.reduce((y, fn) => fn(y), x);
 const compose = (...fns) => (x) => fns.reduceRight((y, fn) => fn(y), x);
-const curry = (fn) => (...args) =>
-  args.length < fn.length
-    ? (...rest) => curry(fn)(...args, ...rest)
-    : fn(...args);
+const curry = (fn) => (...args) => args.length < fn.length
+  ? (...rest) => curry(fn)(...args, ...rest)
+  : fn(...args);
 
 module.exports = {
   map,
