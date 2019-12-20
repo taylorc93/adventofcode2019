@@ -8,7 +8,7 @@ const roundDown = (x) => Math.floor(x);
 const subtractTwo = (x) => x - 2;
 const add = (x, y) => x + y;
 
-const getMass = pipe(
+const getFuelForMass = pipe(
   divideByThree,
   roundDown,
   subtractTwo
@@ -16,13 +16,14 @@ const getMass = pipe(
 
 const main = () => readInput(path.join(__dirname, './input.txt'))
   .map(Number)
-  .map(getMass)
+  .map(getFuelForMass)
   .reduce(add, 0);
 
 module.exports = {
   divideByThree,
   roundDown,
   subtractTwo,
-  getMass,
+  getFuelForMass,
+  add,
   main,
 };
