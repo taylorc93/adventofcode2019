@@ -1,8 +1,9 @@
 const path = require('path');
 
-const { pipe } = require('../utils/functional');
-const readInput = require('../utils/readInput');
+const { pipe, curriedMap, curriedReduce } = require('../utils/functional');
+const { splitByNewline, readInputFile } = require('../utils/readInput');
 
+const getInputFilePath = () => path.join(__dirname, 'input.txt');
 const divideByThree = (x) => x / 3;
 const roundDown = (x) => Math.floor(x);
 const subtractTwo = (x) => x - 2;
@@ -14,10 +15,13 @@ const getFuelForMass = pipe(
   subtractTwo,
 );
 
-const main = () => readInput(path.join(__dirname, './input.txt'))
-  .map(Number)
-  .map(getFuelForMass)
-  .reduce(add, 0);
+const main = pipe(
+  getInputFilePath,
+  readInputFile,
+  splitByNewline,
+  curriedMap(getFuelForMass),
+  curriedReduce(add, 0),
+);
 
 module.exports = {
   divideByThree,

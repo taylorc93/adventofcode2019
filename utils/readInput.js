@@ -1,10 +1,17 @@
 const fs = require('fs');
 
 /*
- * Helper function to read in an input file as utf8 and split it into an array
+ * Helper function to read in an input file as utf8
  */
-const readInput = (path) => fs
-  .readFileSync(path, { encoding: 'utf8' })
-  .split('\n');
+const readInputFile = (path) => fs.readFileSync(path, { encoding: 'utf8' })
 
-module.exports = readInput;
+const splitBy = (delimiter) => (input) => input.split(delimiter);
+const splitByNewline = splitBy('\n');
+const splitByComma = splitBy(',');
+
+module.exports = {
+  readInputFile,
+  splitBy,
+  splitByComma,
+  splitByNewline,
+};
