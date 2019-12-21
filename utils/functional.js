@@ -19,6 +19,11 @@ const chunk = (size, items) => reduce(
   items,
 );
 
+const memoize = (fn) => {
+  const cache = {};
+  return (...args) => cache[JSON.stringify(args)] || fn(...args);
+};
+
 const matched = (x) => ({
   on: () => matched(x),
   otherwise: () => x,
@@ -37,7 +42,7 @@ module.exports = {
   pipe,
   compose,
   curry,
-
+  memoize,
   map,
   curriedMap,
   filter,

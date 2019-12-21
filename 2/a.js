@@ -9,62 +9,82 @@ const getInputFilePath = () => path.join(__dirname, 'input.txt');
 const add = (x, y) => x + y;
 const multiply = (x, y) => x * y;
 
-const updateIntcode = (value, position, intcode) => [
+const updateIntcode = (position, value, intcode) => [
   ...intcode.slice(0, position),
   value,
   ...intcode.slice(position + 1, intcode.length),
 ];
 
-// eslint-disable-next-line
-const convertToInstruction = (fn, [opcode, i, j, position]) => (intcode) => updateIntcode(
-  fn(intcode[i], intcode[j]),
-  position,
-  intcode,
+const baseOpcode = (fn, [, i, j, position]) => (
+  (intcode) => (
+    updateIntcode(
+      position,
+      fn(intcode[i], intcode[j]),
+      intcode,
+    )
+  )
 );
 
-const opcode1 = curry(convertToInstruction)(add);
-const opcode2 = curry(convertToInstruction)(multiply);
+const opcode1 = curry(baseOpcode)(add);
+const opcode2 = curry(baseOpcode)(multiply);
 const opcode99 = () => (intcode) => intcode;
 
-const handleOperation = (operation) => match(operation[0])
-  .on((x) => x === 1, () => opcode1(operation))
-  .on((x) => x === 2, () => opcode2(operation))
-  .otherwise(() => opcode99(operation));
+const generateOp = (op) => match(op[0])
+  .on((x) => x === 1, () => opcode1(op))
+  .on((x) => x === 2, () => opcode2(op))
+  .otherwise(() => opcode99(op));
 
 const initializeIntcode = pipe(
   getInputFilePath,
   readInputFile,
   splitByComma,
   curriedMap(Number),
-  curry(updateIntcode)(12, 1),
-  curry(updateIntcode)(2, 2),
 );
 
-const generateInstructions = (intcode) => ({
+/*
+ * Converts the intcode program from intcode to a "runnable". A runnable is our
+ * custom data structure for an intcode program. A runnable is an object with
+ * 2 keys:
+ *
+ * - `intcode`: The raw intcode (same as the intcode passed in)
+ * - `ops`: An array of functions that represent the 4 value instructions to
+ *          execute (eg: [1, 2, 3, 4]).
+ */
+const generateRunnable = (intcode) => ({
   intcode,
   ops: pipe(
     curry(chunk)(4),
-    curriedMap(handleOperation),
+    curriedMap(generateOp),
   )(intcode),
 });
 
 // Because opcode99 will return the same value as it's passed, we can use
-// referential equality to break out of the recursion
-const runProgram = ({ intcode, ops }) => ops[0](intcode) === intcode
-  ? intcode
-  : runProgram({ intcode: ops[0](intcode), ops: ops.slice(1) });
+// referential equality to break out of the recursion (ie. halt the program)
+const performOperations = ({ intcode, ops }) => (
+  ops[0](intcode) === intcode
+    ? intcode
+    : performOperations({
+      intcode: ops[0](intcode),
+      ops: ops.slice(1),
+    })
+);
+
+const runProgram = pipe(
+  generateRunnable,
+  performOperations,
+  (intcode) => intcode[0],
+);
 
 const main = pipe(
   initializeIntcode,
-  generateInstructions,
+  curry(updateIntcode)(1, 12),
+  curry(updateIntcode)(2, 2),
   runProgram,
-  (intcode) => intcode[0],
 );
 
 module.exports = {
   main,
   updateIntcode,
   initializeIntcode,
-  generateInstructions,
   runProgram,
 };
