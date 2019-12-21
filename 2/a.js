@@ -1,11 +1,13 @@
 const path = require('path');
 
 const { readInputFile, splitByComma } = require('../utils/readInput');
-const { pipe, curriedMap, curry } = require('../utils/functional');
+const {
+  pipe, curriedMap, curry, chunk, match,
+} = require('../utils/functional');
 
 const getInputFilePath = () => path.join(__dirname, 'input.txt');
-const opcode1 = (x, y) => x + y;
-const opcode2 = (x, y) => x * y;
+const add = (x, y) => x + y;
+const multiply = (x, y) => x * y;
 
 const updateIntcode = (value, position, intcode) => [
   ...intcode.slice(0, position),
@@ -13,52 +15,56 @@ const updateIntcode = (value, position, intcode) => [
   ...intcode.slice(position + 1, intcode.length),
 ];
 
-const handleOpcode = (opcodeHandler, position, intcode) => {
-  const [
-    index1,
-    index2,
-    updateLocation,
-  ] = intcode.slice(position + 1, position + 4);
+// eslint-disable-next-line
+const convertToInstruction = (fn, [opcode, i, j, position]) => (intcode) => updateIntcode(
+  fn(intcode[i], intcode[j]),
+  position,
+  intcode,
+);
 
-  return updateIntcode(
-    opcodeHandler(intcode[index1], intcode[index2]),
-    updateLocation,
-    intcode,
-  );
-};
+const opcode1 = curry(convertToInstruction)(add);
+const opcode2 = curry(convertToInstruction)(multiply);
+const opcode99 = () => (intcode) => intcode;
 
-const runIntcodeProgram = (intcode) => {
-  const runAndStore = (currentCode, position) => {
-    const opcode = currentCode[position];
+const handleOperation = (operation) => match(operation[0])
+  .on((x) => x === 1, () => opcode1(operation))
+  .on((x) => x === 2, () => opcode2(operation))
+  .otherwise(() => opcode99(operation));
 
-    if (opcode === 99) {
-      return currentCode[0];
-    }
-
-    const opcodeHandler = opcode === 1
-      ? opcode1
-      : opcode2;
-
-    return runAndStore(
-      handleOpcode(opcodeHandler, position, currentCode),
-      position + 4,
-    );
-  };
-
-  return runAndStore(intcode, 0);
-};
-
-const main = pipe(
+const initializeIntcode = pipe(
   getInputFilePath,
   readInputFile,
   splitByComma,
   curriedMap(Number),
   curry(updateIntcode)(12, 1),
   curry(updateIntcode)(2, 2),
-  runIntcodeProgram,
+);
+
+const generateInstructions = (intcode) => ({
+  intcode,
+  ops: pipe(
+    curry(chunk)(4),
+    curriedMap(handleOperation),
+  )(intcode),
+});
+
+// Because opcode99 will return the same value as it's passed, we can use
+// referential equality to break out of the recursion
+const runProgram = ({ intcode, ops }) => ops[0](intcode) === intcode
+  ? intcode
+  : runProgram({ intcode: ops[0](intcode), ops: ops.slice(1) });
+
+const main = pipe(
+  initializeIntcode,
+  generateInstructions,
+  runProgram,
+  (intcode) => intcode[0],
 );
 
 module.exports = {
   main,
   updateIntcode,
+  initializeIntcode,
+  generateInstructions,
+  runProgram,
 };
