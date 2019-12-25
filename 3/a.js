@@ -4,6 +4,7 @@ const { readInputFile, splitByNewline, splitByComma } = require('../utils/readIn
 const {
   pipe,
   curriedMap,
+  curriedReduce,
   map,
   reduce,
   match,
@@ -21,57 +22,48 @@ const isUp = (x) => x === directions.UP;
 const isDown = (x) => x === directions.DOWN;
 const isLeft = (x) => x === directions.LEFT;
 const isRight = (x) => x === directions.RIGHT;
-
-const pointToString = (p) => `${p.x},${p.y}`;
-
 const getMoveDistance = (move) => Number(move.slice(1));
-const getNextPoint = (direction, point) => match(direction)
-  .on(isUp, () => ({ ...point, y: point.y + 1 }))
-  .on(isDown, () => ({ ...point, y: point.y - 1 }))
-  .on(isLeft, () => ({ ...point, x: point.x - 1 }))
-  .on(isRight, () => ({ ...point, x: point.x + 1 }))
+
+const getNewPoint = (direction, point, distance) => match(direction)
+  .on(isUp, () => ({ ...point, y: point.y + distance }))
+  .on(isDown, () => ({ ...point, y: point.y - distance }))
+  .on(isLeft, () => ({ ...point, x: point.x - distance }))
+  .on(isRight, () => ({ ...point, x: point.x + distance }))
   .otherwise((x) => { throw new Error(`Unsupported direction ${x}`); });
+
+const convertMoveToPoints = (points, move) => [
+  ...points,
+  ...map(
+    (_, i) => getNewPoint(
+      move[0],
+      points.length > 0 ? points[points.length - 1] : { x: 0, y: 0 },
+      i + 1,
+    ),
+    Array(getMoveDistance(move)).fill(),
+  ),
+];
+
+const convertWireToPoints = curriedReduce(convertMoveToPoints, []);
 
 const initializeInput = pipe(
   getInputFilePath,
   readInputFile,
   splitByNewline,
   curriedMap(splitByComma),
+  curriedMap(convertWireToPoints),
+  curriedMap((wire) => map(JSON.stringify, wire)),
 );
 
-const convertMoveToPoints = (pointSet, move) => reduce(
-  (currentPoints) => ({
-    points: currentPoints.points.add(
-      pointToString(getNextPoint(move[0], currentPoints.lastPoint)),
-    ),
-    lastPoint: getNextPoint(move[0], currentPoints.lastPoint),
-  }),
-  pointSet,
-  Array(getMoveDistance(move)).fill(),
-);
-
-const convertWireToPoints = (wire) => reduce(
-  convertMoveToPoints,
-  {
-    lastPoint: { x: 0, y: 0 },
-    points: new Set(),
-  },
-  wire,
-);
-
-const convertWiresToPoints = (wires) => map(convertWireToPoints, wires);
-
-const getIntersections = (wires) => reduce(
-  (currentPoints, wire) => new Set(
-    [...currentPoints].filter((x) => wire.has(x)),
+const getIntersections = pipe(
+  curriedMap((w) => new Set(w)),
+  ([wireSet1, wireSet2]) => new Set(
+    [...wireSet1].filter((x) => wireSet2.has(x)),
   ),
-  wires[0],
-  wires.slice(1),
 );
 
 const getIntersectDistance = pipe(
-  (i) => i.split(',').filter(Boolean).map(Number),
-  ([x, y]) => Math.abs(x) + Math.abs(y),
+  (i) => JSON.parse(i),
+  ({ x, y }) => Math.abs(x) + Math.abs(y),
 );
 
 const findShortestIntersection = (intersections) => reduce(
@@ -84,8 +76,6 @@ const findShortestIntersection = (intersections) => reduce(
 
 const main = pipe(
   initializeInput,
-  convertWiresToPoints,
-  (wires) => map((w) => w.points, wires),
   getIntersections,
   findShortestIntersection,
 );
@@ -93,4 +83,7 @@ const main = pipe(
 module.exports = {
   main,
   initializeInput,
+  getNewPoint,
+  getMoveDistance,
+  getIntersections,
 };
