@@ -25,9 +25,9 @@ const initializeInput = pipe(
   curry(map)(Number),
 );
 
-const findPossiblePasswords = ([min, max]) => reduce(
+const findPossiblePasswords = (valid, [min, max]) => reduce(
   (passwords, _, i) => (
-    isValidPassword(String(i + min))
+    valid(String(i + min))
       ? [...passwords, String(i + min)]
       : passwords
   ),
@@ -37,9 +37,14 @@ const findPossiblePasswords = ([min, max]) => reduce(
 
 const main = pipe(
   initializeInput,
-  findPossiblePasswords,
+  curry(findPossiblePasswords)(isValidPassword),
+  (passwords) => passwords.length,
 );
 
 module.exports = {
   main,
+  initializeInput,
+  doesNotDecrease,
+  hasAdjacentPair,
+  findPossiblePasswords,
 };
