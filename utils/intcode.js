@@ -12,11 +12,18 @@ const updateIntcode = ({ position, value, intcode }) => [
   ...intcode.slice(position + 1, intcode.length),
 ];
 
+const generateRunnable = (intcode) => ({
+  intcode, // The raw array of integers to be used for the program
+  head: 0, // AKA the instruction pointer
+  input: null, // Where input values are stored
+  output: null, // Where opcode 4 writes to
+});
+
 const getParameter = (runnable, offset) => (
   Number(runnable.intcode[runnable.head + offset])
 );
 
-const positionMode = (runnable, parameter) => Number(runnable.intcode[parameter]);
+const positionMode = (runnable, parameter) => runnable.intcode[parameter];
 const immediateMode = (_, parameter) => parameter;
 const getValueForMode = (runnable, [mode, parameter]) => match(mode)
   .on((x) => x === '0', () => positionMode(runnable, parameter))
@@ -27,8 +34,8 @@ const opcode1 = ({ runnable, instruction }) => ({
   ...runnable,
   head: runnable.head + 4,
   intcode: updateIntcode({
-    position: instruction[3],
-    value: instruction[2] + instruction[1],
+    position: instruction.parameters[2],
+    value: instruction.parameters[1] + instruction.parameters[0],
     intcode: runnable.intcode,
   }),
 });
@@ -36,8 +43,8 @@ const opcode2 = ({ runnable, instruction }) => ({
   ...runnable,
   head: runnable.head + 4,
   intcode: updateIntcode({
-    position: instruction[3],
-    value: instruction[2] * instruction[1],
+    position: instruction.parameters[2],
+    value: instruction.parameters[1] * instruction.parameters[0],
     intcode: runnable.intcode,
   }),
 });
@@ -45,7 +52,7 @@ const opcode3 = ({ runnable, instruction }) => ({
   ...runnable,
   head: runnable.head + 2,
   intcode: updateIntcode({
-    position: instruction[1],
+    position: instruction.parameters[0],
     value: runnable.input,
     intcode: runnable.intcode,
   }),
@@ -53,7 +60,7 @@ const opcode3 = ({ runnable, instruction }) => ({
 const opcode4 = ({ runnable, instruction }) => ({
   ...runnable,
   head: runnable.head + 2,
-  output: instruction[1],
+  output: instruction.parameters[0],
 });
 const opcode99 = ({ runnable }) => runnable;
 
@@ -77,31 +84,15 @@ const standardizeOpcode = (opcode) => match(String(opcode))
   )
   .otherwise((x) => { throw new Error(`Unsupported opcode ${x}`); });
 
-const executeInstruction = ({ runnable, instruction }) => match(instruction[0])
-  .on(
-    (x) => x.slice(x.length - 1) === '1',
-    () => opcode1({ runnable, instruction }),
-  )
-  .on(
-    (x) => x.slice(x.length - 1) === '2',
-    () => opcode2({ runnable, instruction }),
-  )
-  .on(
-    (x) => x.slice(x.length - 1) === '3',
-    () => opcode3({ runnable, instruction }),
-  )
-  .on(
-    (x) => x.slice(x.length - 1) === '4',
-    () => opcode4({ runnable, instruction }),
-  )
-  .otherwise(() => opcode99({ runnable }));
+const getOperationForOpcode = (op) => match(op.slice(op.length - 1))
+  .on((x) => x === '1', () => opcode1)
+  .on((x) => x === '2', () => opcode2)
+  .on((x) => x === '3', () => opcode3)
+  .on((x) => x === '4', () => opcode4)
+  .otherwise(() => opcode99);
 
 const setInstruction = (runnable) => {
   const opcode = standardizeOpcode(runnable.intcode[runnable.head]);
-  if (opcode === '99') {
-    return [opcode];
-  }
-
   const modes = opcode
     .slice(0, opcode.length - 2)
     .split('')
@@ -111,37 +102,28 @@ const setInstruction = (runnable) => {
     .slice(runnable.head + 1, runnable.head + 1 + modes.length);
 
   const values = map(curry(getValueForMode)(runnable), zip(modes, parameters));
-  return [
-    opcode,
-    ...values.slice(0, values.length - 1),
-    Number(opcode) === 4
-      ? values[0]
-      : getParameter(runnable, modes.length),
-  ];
+
+  return {
+    operation: getOperationForOpcode(opcode),
+    parameters: [
+      ...values.slice(0, values.length - 1),
+      Number(opcode) === 4
+        ? values[0]
+        : getParameter(runnable, modes.length),
+    ],
+  };
 };
 
 const runInstruction = pipe(
   (runnable) => ({ runnable, instruction: setInstruction(runnable) }),
-  executeInstruction,
+  (ri) => ri.instruction.operation(ri),
 );
 
 const provideInput = (input, runnable) => ({ ...runnable, input });
 
-const generateRunnable = (intcode) => ({
-  intcode,
-  head: 0, // AKA the instruction pointer
-  input: null,
-  output: null,
-  currentInstruction: null,
-});
-
-const runProgram = (runnable) => {
-  const newRunnable = runInstruction(runnable);
-
-  return runnable === newRunnable
-    ? runnable
-    : runProgram(newRunnable);
-};
+const runProgram = (runnable) => match(runInstruction(runnable))
+  .on((r) => runnable === r, () => runnable)
+  .otherwise((r) => runProgram(r));
 
 module.exports = {
   generateRunnable,
@@ -150,4 +132,5 @@ module.exports = {
   runProgram,
   standardizeOpcode,
   provideInput,
+  getOperationForOpcode,
 };

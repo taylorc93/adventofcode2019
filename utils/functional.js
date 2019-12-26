@@ -24,10 +24,15 @@ const zip = (xs, ys) => reduce(
   [],
   xs,
 );
+const updateAtIndex = (i, val, items) => [
+  ...items.slice(0, i),
+  val,
+  ...items.slice(i + 1, items.length),
+];
 
 const last = (arr) => arr[arr.length - 1];
 const trace = (label) => (value) => {
-  console.log(`${label}: ${value}`); // eslint-disable
+  console.log(`${label}: ${value}`); // eslint-disable-line
   return value;
 };
 
@@ -59,6 +64,7 @@ module.exports = {
   trace,
   map,
   zip,
+  updateAtIndex,
   curriedMap,
   filter,
   chunk,

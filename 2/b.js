@@ -1,20 +1,33 @@
+const { pipe, match } = require('../utils/functional');
+const { initializeIntcode } = require('./a');
 const {
-  pipe, curry, match, memoize,
-} = require('../utils/functional');
-const { runProgram, initializeIntcode, updateIntcode } = require('./a');
+  runProgram,
+  generateRunnable,
+  updateIntcode,
+} = require('../utils/intcode');
 
-const setNoun = curry(updateIntcode)(1);
-const setVerb = curry(updateIntcode)(2);
+const setNoun = (noun) => (intcode) => updateIntcode({
+  position: 1,
+  value: noun,
+  intcode,
+});
+
+const setVerb = (verb) => (intcode) => updateIntcode({
+  position: 2,
+  value: verb,
+  intcode,
+});
 
 const setNounAndVerb = (noun, verb) => pipe(
   setNoun(noun),
   setVerb(verb),
 );
 
-const setAndRun = (intcode) => (noun, verb) => (
-  runProgram(
-    setNounAndVerb(noun, verb)(intcode),
-  )
+const setAndRun = (noun, verb) => pipe(
+  setNounAndVerb(noun, verb),
+  generateRunnable,
+  runProgram,
+  (r) => r.intcode[0],
 );
 
 /*
@@ -34,21 +47,20 @@ const setAndRun = (intcode) => (noun, verb) => (
  *      being set to 0 for output(noun)
  */
 const getNounAndVerbForValue = (value) => (intcode) => {
-  const memSetAndRun = memoize(setAndRun(intcode));
   const findNoun = (noun) => (
-    match(memSetAndRun(noun, 0))
+    match(setAndRun(noun, 0)(intcode))
       .on(
-        (x) => x > value && memSetAndRun(noun - 1, 0) < value,
+        (x) => x > value && setAndRun(noun - 1, 0)(intcode) < value,
         () => noun - 1,
       )
-      .on((x) => x === memSetAndRun(noun - 1, 0), () => noun)
+      .on((x) => x === setAndRun(noun - 1, 0)(intcode), () => noun)
       .on((x) => x === value, () => noun)
       .on((x) => x > value, () => findNoun(noun - 1))
       .otherwise(() => findNoun(noun + 1))
   );
   const findVerb = (noun) => ({
     noun,
-    verb: value - memSetAndRun(noun, 0),
+    verb: value - setAndRun(noun, 0)(intcode),
   });
 
   return pipe(
