@@ -1,9 +1,13 @@
 const path = require('path');
 
 const { readInputFile, splitByComma } = require('../utils/readInput');
-const { pipe, curriedMap } = require('../utils/functional');
+const { pipe, curriedMap, curry } = require('../utils/functional');
 
-const { generateRunnable, runProgram, updateIntcode } = require('../utils/intcode');
+const {
+  generateRunnable,
+  runProgram,
+  provideInput,
+} = require('../utils/intcode');
 
 const getInputFilePath = () => path.join(__dirname, 'input.txt');
 
@@ -16,11 +20,10 @@ const initializeIntcode = pipe(
 
 const main = pipe(
   initializeIntcode,
-  (intcode) => updateIntcode({ position: 1, value: 12, intcode }),
-  (intcode) => updateIntcode({ position: 2, value: 2, intcode }),
   generateRunnable,
+  curry(provideInput)(1),
   runProgram,
-  (runnable) => runnable.intcode[0],
+  (runnable) => runnable.output,
 );
 
 module.exports = {

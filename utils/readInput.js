@@ -8,10 +8,12 @@ const readInputFile = (path) => fs.readFileSync(path, { encoding: 'utf8' });
 const splitBy = (delimiter) => (input) => input.split(delimiter);
 const splitByNewline = splitBy('\n');
 const splitByComma = splitBy(',');
+const splitByDash = splitBy('-');
 
 module.exports = {
   readInputFile,
   splitBy,
   splitByComma,
   splitByNewline,
+  splitByDash,
 };

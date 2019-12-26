@@ -8,6 +8,7 @@ const curry = (fn) => (...args) => args.length < fn.length
   ? (...rest) => curry(fn)(...args, ...rest)
   : fn(...args);
 
+
 const map = (cb, items) => items.map(cb);
 const filter = (cb, items) => items.filter(cb);
 const reduce = (cb, initial, items) => items.reduce(cb, initial);
@@ -18,6 +19,17 @@ const chunk = (size, items) => reduce(
   [],
   items,
 );
+const zip = (xs, ys) => reduce(
+  (zipped, item, i) => [...zipped, [item, ys[i]]],
+  [],
+  xs,
+);
+
+const last = (arr) => arr[arr.length - 1];
+const trace = (label) => (value) => {
+  console.log(`${label}: ${value}`); // eslint-disable
+  return value;
+};
 
 const memoize = (fn) => {
   const cache = {};
@@ -43,7 +55,10 @@ module.exports = {
   compose,
   curry,
   memoize,
+  last,
+  trace,
   map,
+  zip,
   curriedMap,
   filter,
   chunk,
