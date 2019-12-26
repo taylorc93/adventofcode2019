@@ -53,9 +53,10 @@ const opcode3 = ({ runnable, instruction }) => ({
   head: runnable.head + 2,
   intcode: updateIntcode({
     position: instruction.parameters[0],
-    value: runnable.input,
+    value: runnable.input[0],
     intcode: runnable.intcode,
   }),
+  input: runnable.input.slice(1),
 });
 const opcode4 = ({ runnable, instruction }) => ({
   ...runnable,
@@ -66,13 +67,13 @@ const opcode5 = ({ runnable, instruction }) => ({
   ...runnable,
   head: instruction.parameters[0] !== 0
     ? instruction.parameters[1]
-    : runnable.head + 3
+    : runnable.head + 3,
 });
 const opcode6 = ({ runnable, instruction }) => ({
   ...runnable,
   head: instruction.parameters[0] === 0
     ? instruction.parameters[1]
-    : runnable.head + 3
+    : runnable.head + 3,
 });
 const opcode7 = ({ runnable, instruction }) => ({
   ...runnable,
@@ -106,8 +107,8 @@ const standardizeOpcode1 = (op) => (
 const standardizeOpcode2 = (op) => (
   `1${op.slice(0, op.length - 2).padStart(2, '0')}02`
 );
-const standardizeOpcode3 = () => `103`;
-const standardizeOpcode4 = () => `004`;
+const standardizeOpcode3 = () => '103';
+const standardizeOpcode4 = () => '004';
 const standardizeOpcode5 = (op) => (
   `${op.slice(0, op.length - 2).padStart(2, '0')}05`
 );

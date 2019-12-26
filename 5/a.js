@@ -21,7 +21,7 @@ const initializeIntcode = pipe(
 const main = pipe(
   initializeIntcode,
   generateRunnable,
-  curry(provideInput)(1),
+  curry(provideInput)([1]),
   runProgram,
   (runnable) => runnable.output,
 );

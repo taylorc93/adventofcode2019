@@ -8,10 +8,15 @@ const curry = (fn) => (...args) => args.length < fn.length
   ? (...rest) => curry(fn)(...args, ...rest)
   : fn(...args);
 
-
 const map = (cb, items) => items.map(cb);
 const filter = (cb, items) => items.filter(cb);
 const reduce = (cb, initial, items) => items.reduce(cb, initial);
+const flatten = (items) => reduce(
+  (xs, i) => [...xs, ...(Array.isArray(i) ? flatten(i) : [i])],
+  [],
+  items,
+);
+
 const chunk = (size, items) => reduce(
   (chunks, item) => chunks.length && chunks[chunks.length - 1].length < size
     ? [...chunks.slice(0, chunks.length - 1), [...chunks[chunks.length - 1], item]]
@@ -64,6 +69,7 @@ module.exports = {
   trace,
   map,
   zip,
+  flatten,
   updateAtIndex,
   curriedMap,
   filter,
