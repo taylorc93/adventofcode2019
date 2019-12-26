@@ -19,8 +19,8 @@ const generateRunnable = (intcode) => ({
   output: null, // Where opcode 4 writes to
 });
 
-const getParameter = (runnable, offset) => (
-  Number(runnable.intcode[runnable.head + offset])
+const getParameters = (runnable, numParams) => (
+  runnable.intcode.slice(runnable.head + 1, runnable.head + 1 + numParams)
 );
 
 const positionMode = (runnable, parameter) => runnable.intcode[parameter];
@@ -62,26 +62,75 @@ const opcode4 = ({ runnable, instruction }) => ({
   head: runnable.head + 2,
   output: instruction.parameters[0],
 });
+const opcode5 = ({ runnable, instruction }) => ({
+  ...runnable,
+  head: instruction.parameters[0] !== 0
+    ? instruction.parameters[1]
+    : runnable.head + 3
+});
+const opcode6 = ({ runnable, instruction }) => ({
+  ...runnable,
+  head: instruction.parameters[0] === 0
+    ? instruction.parameters[1]
+    : runnable.head + 3
+});
+const opcode7 = ({ runnable, instruction }) => ({
+  ...runnable,
+  head: runnable.head + 4,
+  intcode: updateIntcode({
+    position: instruction.parameters[2],
+    value: instruction.parameters[0] < instruction.parameters[1] ? 1 : 0,
+    intcode: runnable.intcode,
+  }),
+});
+const opcode8 = ({ runnable, instruction }) => ({
+  ...runnable,
+  head: runnable.head + 4,
+  intcode: updateIntcode({
+    position: instruction.parameters[2],
+    value: instruction.parameters[0] === instruction.parameters[1] ? 1 : 0,
+    intcode: runnable.intcode,
+  }),
+});
 const opcode99 = ({ runnable }) => runnable;
 
-// Helper to ensure all opcodes have a parameter mode set for each parameter
-const standardizeOpcode = (opcode) => match(String(opcode))
-  // Handle single digit cases first
-  .on((x) => x === '1', () => '00001')
-  .on((x) => x === '2', () => '00002')
+/*
+ * For values who have a parameter indicating where to write a value to, these
+ * have mode 1 hard coded for that parameter. This ensures that the parameter
+ * will be used as the address, not the value at the address the parameter is
+ * pointing to.
+ */
+const standardizeOpcode1 = (op) => (
+  `1${op.slice(0, op.length - 2).padStart(2, '0')}01`
+);
+const standardizeOpcode2 = (op) => (
+  `1${op.slice(0, op.length - 2).padStart(2, '0')}02`
+);
+const standardizeOpcode3 = () => `103`;
+const standardizeOpcode4 = () => `004`;
+const standardizeOpcode5 = (op) => (
+  `${op.slice(0, op.length - 2).padStart(2, '0')}05`
+);
+const standardizeOpcode6 = (op) => (
+  `${op.slice(0, op.length - 2).padStart(2, '0')}06`
+);
+const standardizeOpcode7 = (op) => (
+  `1${op.slice(0, op.length - 2).padStart(2, '0')}07`
+);
+const standardizeOpcode8 = (op) => (
+  `1${op.slice(0, op.length - 2).padStart(2, '0')}08`
+);
+
+const standardizeOpcode = (op) => match(op.slice(op.length - 2, op.length))
   .on((x) => x === '99', () => '99')
-  // With opcodes 3 + 4, the write instruction is always 0, so these can be
-  // standardized to 003 or 004 respectively
-  .on(
-    (x) => x[x.length - 1] === '3' || x[x.length - 1] === '4',
-    (x) => `00${x[x.length - 1]}`,
-  )
-  // For opcode 1 + 2 with parameter modes set, this pads any missing parameters
-  // with '0' (eg. '1001' => '01001')
-  .on(
-    (x) => x[x.length - 1] === '1' || x[x.length - 1] === '2',
-    (x) => `${x.slice(0, x.length - 1)}${x[x.length - 1]}`.padStart(5, '0'),
-  )
+  .on((x) => Number(x) === 1, () => standardizeOpcode1(op))
+  .on((x) => Number(x) === 2, () => standardizeOpcode2(op))
+  .on((x) => Number(x) === 3, () => standardizeOpcode3(op))
+  .on((x) => Number(x) === 4, () => standardizeOpcode4(op))
+  .on((x) => Number(x) === 5, () => standardizeOpcode5(op))
+  .on((x) => Number(x) === 6, () => standardizeOpcode6(op))
+  .on((x) => Number(x) === 7, () => standardizeOpcode7(op))
+  .on((x) => Number(x) === 8, () => standardizeOpcode8(op))
   .otherwise((x) => { throw new Error(`Unsupported opcode ${x}`); });
 
 const getOperationForOpcode = (op) => match(op.slice(op.length - 1))
@@ -89,30 +138,30 @@ const getOperationForOpcode = (op) => match(op.slice(op.length - 1))
   .on((x) => x === '2', () => opcode2)
   .on((x) => x === '3', () => opcode3)
   .on((x) => x === '4', () => opcode4)
+  .on((x) => x === '5', () => opcode5)
+  .on((x) => x === '6', () => opcode6)
+  .on((x) => x === '7', () => opcode7)
+  .on((x) => x === '8', () => opcode8)
   .otherwise(() => opcode99);
 
-const setInstruction = (runnable) => {
-  const opcode = standardizeOpcode(runnable.intcode[runnable.head]);
-  const modes = opcode
-    .slice(0, opcode.length - 2)
-    .split('')
-    .reverse();
-  const parameters = runnable
-    .intcode
-    .slice(runnable.head + 1, runnable.head + 1 + modes.length);
-
-  const values = map(curry(getValueForMode)(runnable), zip(modes, parameters));
-
-  return {
+const setInstruction = pipe(
+  (runnable) => ({
+    runnable,
+    opcode: standardizeOpcode(String(runnable.intcode[runnable.head])),
+  }),
+  ({ runnable, opcode }) => ({
+    runnable,
+    opcode,
+    modes: opcode.slice(0, opcode.length - 2).split('').reverse(),
+  }),
+  ({ runnable, opcode, modes }) => ({
     operation: getOperationForOpcode(opcode),
-    parameters: [
-      ...values.slice(0, values.length - 1),
-      Number(opcode) === 4
-        ? values[0]
-        : getParameter(runnable, modes.length),
-    ],
-  };
-};
+    parameters: map(
+      curry(getValueForMode)(runnable),
+      zip(modes, getParameters(runnable, modes.length)),
+    ),
+  }),
+);
 
 const runInstruction = pipe(
   (runnable) => ({ runnable, instruction: setInstruction(runnable) }),

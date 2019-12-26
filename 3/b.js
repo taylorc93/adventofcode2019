@@ -20,7 +20,7 @@ const main = pipe(
   initializeInput,
   (wires) => ({
     wires,
-    intersections: [...getIntersections(wires)]
+    intersections: [...getIntersections(wires)],
   }),
   findShortestIntersection,
 );
