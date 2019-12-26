@@ -24,9 +24,9 @@ const createOrbitGraph = (orbits) => reduce(
 );
 
 const getOrbitalCalculation = (graph) => {
-  const getNumberOfOrbits = (obj, count = 0) => obj.name === 'COM'
+  const getNumberOfOrbits = (node, count = 0) => node.name === 'COM'
     ? count
-    : getNumberOfOrbits(graph[obj.orbitting], count + 1);
+    : getNumberOfOrbits(graph[node.orbitting], count + 1);
 
   return memoize(getNumberOfOrbits);
 };
@@ -35,7 +35,7 @@ const calculateOrbitChecksum = (graph) => {
   const getNumberOfOrbits = getOrbitalCalculation(graph);
 
   return reduce(
-    (sum, obj) => sum + getNumberOfOrbits(obj),
+    (sum, node) => sum + getNumberOfOrbits(node),
     0,
     Object.values(graph),
   );
