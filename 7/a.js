@@ -31,7 +31,7 @@ const getAllPermutations = ([x, ...xs]) => x !== undefined
 
 const runAndGetOutput = pipe(
   runProgram,
-  (runnable) => runnable.output,
+  (runnable) => runnable.output[0],
 );
 
 const testPhaseSettings = (runnable, settings) => reduce(

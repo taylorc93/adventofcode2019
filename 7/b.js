@@ -15,10 +15,12 @@ const allThrustersFinished = (thrusters) => reduce(
   thrusters,
 );
 
+const getLastOutput = (runnable) => runnable.output[runnable.output.length - 1];
+
 const testPhaseSettings = (thrusters) => match(thrusters)
   .on(
     (ts) => allThrustersFinished(ts),
-    (ts) => thrusters[ts.length - 1].output,
+    (ts) => getLastOutput(thrusters[ts.length - 1]),
   )
   .on(
     (ts) => ts[0].status === statuses.FINISHED,
@@ -26,12 +28,12 @@ const testPhaseSettings = (thrusters) => match(thrusters)
   )
   .otherwise(([t, ...rest]) => testPhaseSettings([
     ...rest,
-    runProgram(provideInput(t, rest[rest.length - 1].output)),
+    runProgram(provideInput(t, getLastOutput(rest[rest.length - 1]))),
   ]));
 
 const initializeThrusters = (runnable, settings) => map(
   (setting, i) => i === settings.length - 1
-    ? { ...provideInput(runnable, setting), output: 0 } // initial input signal
+    ? { ...provideInput(runnable, setting), output: [0] } // initial input signal
     : provideInput(runnable, setting),
   settings,
 );
