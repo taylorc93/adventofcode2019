@@ -245,6 +245,8 @@ const provideInput = (runnable, ...input) => ({
     : input,
 });
 
+const resetOutput = (runnable) => ({ ...runnable, output: [] });
+
 // The original implementation of `runProgram` used recursion but ran into stack
 // overflow errors on larger intcode programs (eg. 9b).
 const runProgram = (runnable) => {
@@ -266,5 +268,6 @@ module.exports = {
   runProgram,
   standardizeOpcode,
   provideInput,
+  resetOutput,
   statuses,
 };
