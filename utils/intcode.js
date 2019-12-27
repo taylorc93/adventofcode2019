@@ -8,6 +8,10 @@ const {
 
 const updateMemory = ({ position, value, memory }) => [
   ...memory.slice(0, position),
+  // Allocate additional memory if needed
+  ...(position > memory.length
+    ? Array(position - memory.length).fill(0)
+    : []),
   value,
   ...memory.slice(position + 1, memory.length),
 ];
@@ -41,12 +45,12 @@ const getValueForMode = (runnable, [mode, parameter]) => match(mode)
   .on((x) => x === '2', () => relativeMode(runnable, parameter))
   .otherwise(() => { throw new Error(`Unsupported mode ${mode}`); });
 
-const opcode1 = ({ runnable, instruction }) => ({
+const opcode1 = ({ runnable, instruction: { parameters } }) => ({
   ...runnable,
   head: runnable.head + 4,
   memory: updateMemory({
-    position: instruction.parameters[2],
-    value: instruction.parameters[1] + instruction.parameters[0],
+    position: parameters[2],
+    value: parameters[1] + parameters[0],
     memory: runnable.memory,
   }),
 });
@@ -181,6 +185,10 @@ const setInstruction = pipe(
       zip(modes, getParameters(runnable, modes.length)),
     ),
   }),
+  (i) => {
+    console.log(i);
+    return i;
+  },
 );
 
 const runInstruction = pipe(
