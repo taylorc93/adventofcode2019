@@ -230,7 +230,7 @@ const getInstruction = (runnable) => (
     .otherwise((x) => { throw new Error(`Invalid opcode ${x}`); })
 );
 
-const runInstruction = pipe(
+const runNextInstruction = pipe(
   (runnable) => ({ runnable, ...getInstruction(runnable) }),
   ({ runnable, operation, parameters }) => operation({
     runnable,
@@ -245,10 +245,20 @@ const provideInput = (runnable, ...input) => ({
     : input,
 });
 
-const runProgram = (runnable) => match(runInstruction(runnable))
-  .on((r) => r.status === statuses.FINISHED, (r) => r)
-  .on((r) => r.status === statuses.NEEDS_INPUT, (r) => r)
-  .otherwise((r) => runProgram(r));
+// The original implementation of `runProgram` used recursion but ran into stack
+// overflow errors on larger intcode programs (eg. 9b).
+const runProgram = (runnable) => {
+  let current = runnable;
+  while (current) {
+    current = runNextInstruction(current);
+    if (current.status === statuses.FINISHED
+      || current.status === statuses.NEEDS_INPUT) {
+      break;
+    }
+  }
+
+  return current;
+};
 
 module.exports = {
   generateRunnable,

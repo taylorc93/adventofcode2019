@@ -17,11 +17,11 @@ const initializeProgram = pipe(
   splitByComma,
   curriedMap(Number),
   generateRunnable,
-  (runnable) => provideInput(runnable, 1),
 );
 
 const main = pipe(
   initializeProgram,
+  (runnable) => provideInput(runnable, 1),
   runProgram,
   (runnable) => runnable.output.length === 1
     ? runnable.output[0]
