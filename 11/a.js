@@ -132,4 +132,7 @@ const main = pipe(
 
 module.exports = {
   main,
+  initializeProgram,
+  initializeRobot,
+  paintHull,
 };
