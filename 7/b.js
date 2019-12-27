@@ -26,13 +26,13 @@ const testPhaseSettings = (thrusters) => match(thrusters)
   )
   .otherwise(([t, ...rest]) => testPhaseSettings([
     ...rest,
-    runProgram(provideInput(rest[rest.length - 1].output, t)),
+    runProgram(provideInput(t, rest[rest.length - 1].output)),
   ]));
 
 const initializeThrusters = (runnable, settings) => map(
   (setting, i) => i === settings.length - 1
-    ? { ...provideInput(setting, runnable), output: 0 } // initial input signal
-    : provideInput(setting, runnable),
+    ? { ...provideInput(runnable, setting), output: 0 } // initial input signal
+    : provideInput(runnable, setting),
   settings,
 );
 
@@ -60,5 +60,4 @@ module.exports = {
   initializeThrusters,
   initializeRunnable,
   testPhaseSettings,
-  provideInput,
 };

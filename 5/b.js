@@ -1,5 +1,5 @@
 const { initializeIntcode } = require('./a');
-const { pipe, curry } = require('../utils/functional');
+const { pipe } = require('../utils/functional');
 
 const {
   generateRunnable,
@@ -10,7 +10,7 @@ const {
 const main = pipe(
   initializeIntcode,
   generateRunnable,
-  curry(provideInput)(5),
+  (runnable) => provideInput(runnable, 5),
   runProgram,
   (runnable) => runnable.output,
 );

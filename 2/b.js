@@ -1,21 +1,21 @@
 const { pipe, match } = require('../utils/functional');
-const { initializeIntcode } = require('./a');
+const { initializeMemory } = require('./a');
 const {
   runProgram,
   generateRunnable,
-  updateIntcode,
+  updateMemory,
 } = require('../utils/intcode');
 
-const setNoun = (noun) => (intcode) => updateIntcode({
+const setNoun = (noun) => (memory) => updateMemory({
   position: 1,
   value: noun,
-  intcode,
+  memory,
 });
 
-const setVerb = (verb) => (intcode) => updateIntcode({
+const setVerb = (verb) => (memory) => updateMemory({
   position: 2,
   value: verb,
-  intcode,
+  memory,
 });
 
 const setNounAndVerb = (noun, verb) => pipe(
@@ -27,7 +27,7 @@ const setAndRun = (noun, verb) => pipe(
   setNounAndVerb(noun, verb),
   generateRunnable,
   runProgram,
-  (r) => r.intcode[0],
+  (r) => r.memory[0],
 );
 
 /*
@@ -46,21 +46,21 @@ const setAndRun = (noun, verb) => pipe(
  *      by 1, so this can be found via value - ouput(noun), verb once again
  *      being set to 0 for output(noun)
  */
-const getNounAndVerbForValue = (value) => (intcode) => {
+const getNounAndVerbForValue = (value) => (memory) => {
   const findNoun = (noun) => (
-    match(setAndRun(noun, 0)(intcode))
+    match(setAndRun(noun, 0)(memory))
       .on(
-        (x) => x > value && setAndRun(noun - 1, 0)(intcode) < value,
+        (x) => x > value && setAndRun(noun - 1, 0)(memory) < value,
         () => noun - 1,
       )
-      .on((x) => x === setAndRun(noun - 1, 0)(intcode), () => noun)
+      .on((x) => x === setAndRun(noun - 1, 0)(memory), () => noun)
       .on((x) => x === value, () => noun)
       .on((x) => x > value, () => findNoun(noun - 1))
       .otherwise(() => findNoun(noun + 1))
   );
   const findVerb = (noun) => ({
     noun,
-    verb: value - setAndRun(noun, 0)(intcode),
+    verb: value - setAndRun(noun, 0)(memory),
   });
 
   return pipe(
@@ -72,7 +72,7 @@ const getNounAndVerbForValue = (value) => (intcode) => {
 const calculateAnswer = ({ noun, verb }) => 100 * noun + verb;
 
 const main = pipe(
-  initializeIntcode,
+  initializeMemory,
   getNounAndVerbForValue(19690720),
   calculateAnswer,
 );

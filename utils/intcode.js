@@ -183,11 +183,11 @@ const runInstruction = pipe(
   (ri) => ri.instruction.operation(ri),
 );
 
-const provideInput = (input, runnable) => ({
+const provideInput = (runnable, ...input) => ({
   ...runnable,
   input: runnable.input.length
-    ? [...runnable.input, input]
-    : [input],
+    ? [...runnable.input, ...input]
+    : input,
 });
 
 const runProgram = (runnable) => match(runInstruction(runnable))

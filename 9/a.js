@@ -6,10 +6,9 @@ const { pipe, curriedMap } = require('../utils/functional');
 const {
   generateRunnable,
   runProgram,
-  provideInput,
 } = require('../utils/intcode');
 
-const getInputFilePath = () => path.join(__dirname, 'input.txt');
+const getInputFilePath = () => path.join(__dirname, 'test_input.txt');
 
 const initializeIntcode = pipe(
   getInputFilePath,
@@ -21,9 +20,10 @@ const initializeIntcode = pipe(
 const main = pipe(
   initializeIntcode,
   generateRunnable,
-  (runnable) => provideInput(runnable, 1),
   runProgram,
-  (runnable) => runnable.output,
+  (runnable) => runnable.output.length === 1
+    ? runnable.output[0]
+    : new Error(`Too much output: ${JSON.stringify(runnable.output)}`),
 );
 
 module.exports = {

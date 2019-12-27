@@ -35,7 +35,7 @@ const runAndGetOutput = pipe(
 );
 
 const testPhaseSettings = (runnable, settings) => reduce(
-  (output, s) => runAndGetOutput(provideInput([s, output], runnable)),
+  (output, s) => runAndGetOutput(provideInput(runnable, s, output)),
   0,
   settings,
 );
