@@ -12,11 +12,17 @@ const updateIntcode = ({ position, value, intcode }) => [
   ...intcode.slice(position + 1, intcode.length),
 ];
 
+const statuses = {
+  READY: 'R',
+  NEEDS_INPUT: 'NI',
+  FINISHED: 'F',
+};
 const generateRunnable = (intcode) => ({
   intcode, // The raw array of integers to be used for the program
   head: 0, // AKA the instruction pointer
-  input: null, // Where input values are stored
+  input: [], // Where input values are stored
   output: null, // Where opcode 4 writes to
+  status: statuses.READY, // The status of the program
 });
 
 const getParameters = (runnable, numParams) => (
@@ -48,16 +54,21 @@ const opcode2 = ({ runnable, instruction }) => ({
     intcode: runnable.intcode,
   }),
 });
-const opcode3 = ({ runnable, instruction }) => ({
-  ...runnable,
-  head: runnable.head + 2,
-  intcode: updateIntcode({
-    position: instruction.parameters[0],
-    value: runnable.input[0],
-    intcode: runnable.intcode,
-  }),
-  input: runnable.input.slice(1),
-});
+const opcode3 = ({ runnable, instruction }) => runnable.input.length > 0
+  ? {
+    ...runnable,
+    head: runnable.head + 2,
+    intcode: updateIntcode({
+      position: instruction.parameters[0],
+      value: runnable.input[0],
+      intcode: runnable.intcode,
+    }),
+    input: runnable.input.slice(1),
+    status: statuses.READY,
+  } : {
+    ...runnable,
+    status: statuses.NEEDS_INPUT,
+  };
 const opcode4 = ({ runnable, instruction }) => ({
   ...runnable,
   head: runnable.head + 2,
@@ -93,7 +104,10 @@ const opcode8 = ({ runnable, instruction }) => ({
     intcode: runnable.intcode,
   }),
 });
-const opcode99 = ({ runnable }) => runnable;
+const opcode99 = ({ runnable }) => ({
+  ...runnable,
+  status: statuses.FINISHED,
+});
 
 /*
  * For values who have a parameter indicating where to write a value to, these
@@ -169,10 +183,16 @@ const runInstruction = pipe(
   (ri) => ri.instruction.operation(ri),
 );
 
-const provideInput = (input, runnable) => ({ ...runnable, input });
+const provideInput = (input, runnable) => ({
+  ...runnable,
+  input: runnable.input.length
+    ? [...runnable.input, input]
+    : [input],
+});
 
 const runProgram = (runnable) => match(runInstruction(runnable))
-  .on((r) => runnable === r, () => runnable)
+  .on((r) => r.status === statuses.FINISHED, (r) => r)
+  .on((r) => r.status === statuses.NEEDS_INPUT, (r) => r)
   .otherwise((r) => runProgram(r));
 
 module.exports = {
@@ -183,4 +203,5 @@ module.exports = {
   standardizeOpcode,
   provideInput,
   getOperationForOpcode,
+  statuses,
 };
