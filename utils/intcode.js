@@ -29,7 +29,7 @@ const getValueInMemory = (runnable, offset) => (
 );
 
 // If a parameter is used for a write location (eg. the 3rd parameter in opcode
-// 1), we need to handle modes differently
+// 1), we need to handle it's differently
 const positionMode = (runnable, parameter, write) => write
   ? parameter
   : runnable.memory[parameter] || 0;

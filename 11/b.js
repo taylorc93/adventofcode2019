@@ -2,8 +2,7 @@ const { pipe, map, reduce } = require('../utils/functional');
 const { provideInput } = require('../utils/intcode');
 
 const { initializeProgram, paintHull, initializeRobot } = require('./a');
-
-const getPixelForColor = (color) => color === 0 ? ' ' : 'X';
+const { generateGrid, insertAtPoint, renderGrid } = require('../utils/grid');
 
 const convertKeyToPoint = (key) => ({
   x: Math.abs(Number(key.split(',')[0])),
@@ -16,38 +15,30 @@ const getXsOrYs = (grid, index) => map(
 );
 
 const getNumberOfRows = (grid) => (
-  Math.abs(Math.max(...getXsOrYs(grid, 1)))
-  + Math.abs(Math.min(...getXsOrYs(grid, 1))) + 1
+  Math.abs(Math.min(...getXsOrYs(grid, 1))) + 1
 );
-const getNumberOfColumns = (grid) => Math.max(...getXsOrYs(grid, 0));
-const initializePixelMap = (grid) => Array(getNumberOfRows(grid)).fill(
-  Array(getNumberOfColumns(grid)).fill(getPixelForColor(0)),
-);
+const getNumberOfColumns = (grid) => Math.max(...getXsOrYs(grid, 0)) + 1;
 
-const updateRow = (grid, key, row) => [
-  ...row.slice(0, convertKeyToPoint(key).x),
-  getPixelForColor(grid[key].color),
-  ...row.slice(convertKeyToPoint(key).x + 1, row.length),
-];
-
-const convertGridToPixelMap = (grid) => reduce(
-  (pixelMap, key) => [
-    ...pixelMap.slice(0, convertKeyToPoint(key).y),
-    updateRow(grid, key, pixelMap[convertKeyToPoint(key).y]),
-    ...pixelMap.slice(convertKeyToPoint(key).y + 1, pixelMap.length),
-  ],
-  initializePixelMap(grid),
-  Object.keys(grid),
+const convertPaintInstructionsToGrid = (pi) => reduce(
+  (grid, key) => insertAtPoint(
+    grid,
+    convertKeyToPoint(key),
+    pi[key].color,
+  ),
+  generateGrid(
+    getNumberOfRows(pi),
+    getNumberOfColumns(pi),
+    { 0: ' ', 1: '#' },
+  ),
+  Object.keys(pi),
 );
 
 const main = pipe(
   initializeProgram,
   (runnable) => provideInput(runnable, 1),
   (r) => paintHull(initializeRobot(r)),
-  convertGridToPixelMap,
-  (pixelMap) => pixelMap.forEach(
-    (row) => console.log(row.join('')), // eslint-disable-line
-  ),
+  convertPaintInstructionsToGrid,
+  renderGrid,
 );
 
 module.exports = {
