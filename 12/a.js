@@ -95,7 +95,7 @@ const calculateTotalEnergy = (moons) => reduce(
   moons,
 );
 
-const initializeMoonState = pipe(
+const initializeMoons = pipe(
   getInputFilePath,
   readInputFile,
   splitByNewline,
@@ -103,12 +103,14 @@ const initializeMoonState = pipe(
 );
 
 const main = pipe(
-  initializeMoonState,
+  initializeMoons,
   curry(applySteps)(1000),
   calculateTotalEnergy,
 );
 
 module.exports = {
   main,
-  initializeMoonState,
+  initializeMoons,
+  getPairs,
+  updateMoons,
 };
