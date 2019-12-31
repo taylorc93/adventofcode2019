@@ -15,6 +15,7 @@ module.exports = {
     ecmaVersion: 2018,
   },
   rules: {
-    "no-confusing-arrow": 'off'
+    "no-confusing-arrow": 'off',
+    "no-nested-ternary": 'off',
   },
 };
