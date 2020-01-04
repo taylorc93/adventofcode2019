@@ -11,22 +11,22 @@ const {
 
 const getInputFilePath = () => path.join(__dirname, 'input.txt');
 
-const initializeIntcode = pipe(
+const initializeProgram = pipe(
   getInputFilePath,
   readInputFile,
   splitByComma,
   curriedMap(Number),
+  generateRunnable,
 );
 
 const main = pipe(
-  initializeIntcode,
-  generateRunnable,
+  initializeProgram,
   (runnable) => provideInput(runnable, 1),
   runProgram,
-  (runnable) => runnable.output,
+  (runnable) => runnable.output[runnable.output.length - 1],
 );
 
 module.exports = {
   main,
-  initializeIntcode,
+  initializeProgram,
 };

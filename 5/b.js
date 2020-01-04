@@ -1,18 +1,16 @@
-const { initializeIntcode } = require('./a');
+const { initializeProgram } = require('./a');
 const { pipe } = require('../utils/functional');
 
 const {
-  generateRunnable,
   runProgram,
   provideInput,
 } = require('../utils/intcode');
 
 const main = pipe(
-  initializeIntcode,
-  generateRunnable,
+  initializeProgram,
   (runnable) => provideInput(runnable, 5),
   runProgram,
-  (runnable) => runnable.output,
+  (runnable) => runnable.output[0],
 );
 
 module.exports = {
