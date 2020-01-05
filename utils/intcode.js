@@ -1,14 +1,21 @@
-const { match, pipe } = require('./functional');
+const { pipe } = require('./functional');
 
-const updateMemory = ({ position, value, memory }) => [
-  ...memory.slice(0, position),
-  // Allocate additional memory if needed
-  ...(position > memory.length
-    ? Array(position - memory.length).fill(0)
-    : []),
-  value,
-  ...memory.slice(position + 1, memory.length),
-];
+const updateMemory = ({ position, value, memory }) => {
+  // This is a performance optimization that requires less cloning + slicing
+  // for cases when we do not need to allocate more memory.
+  if (position < memory.length) {
+    const clonedMemory = memory.slice(0);
+    clonedMemory[position] = value;
+    return clonedMemory;
+  }
+
+  return [
+    ...memory.slice(0, position),
+    ...(Array(position - memory.length).fill(0)),
+    value,
+  ];
+};
+
 
 const statuses = {
   READY: 'R',
@@ -38,12 +45,13 @@ const relativeMode = (runnable, parameter, write) => write
   ? runnable.relative + parameter
   : runnable.memory[runnable.relative + parameter] || 0;
 
+const modeHandlers = {
+  0: positionMode,
+  1: immediateMode,
+  2: relativeMode,
+};
 const getValueForMode = (runnable, mode, parameter, write = false) => (
-  match(mode)
-    .on((x) => x === '0', () => positionMode(runnable, parameter, write))
-    .on((x) => x === '1', () => immediateMode(runnable, parameter, write))
-    .on((x) => x === '2', () => relativeMode(runnable, parameter, write))
-    .otherwise(() => { throw new Error(`Unsupported mode ${mode}`); })
+  modeHandlers[mode](runnable, parameter, write)
 );
 
 const opcode1 = ({ runnable, parameters }) => ({
@@ -132,20 +140,19 @@ const setOpcodeModes = (op, numParams) => (
   `${op.slice(0, op.length - 2).padStart(numParams, '0')}`
 );
 
-const standardizeOpcode = (op) => (
-  match(Number(getOpcodeId(op)))
-    .on((x) => x === 1, () => `${setOpcodeModes(op, 3)}01`)
-    .on((x) => x === 2, () => `${setOpcodeModes(op, 3)}02`)
-    .on((x) => x === 3, () => `${setOpcodeModes(op, 1)}03`)
-    .on((x) => x === 4, () => `${setOpcodeModes(op, 1)}04`)
-    .on((x) => x === 5, () => `${setOpcodeModes(op, 2)}05`)
-    .on((x) => x === 6, () => `${setOpcodeModes(op, 2)}06`)
-    .on((x) => x === 7, () => `${setOpcodeModes(op, 3)}07`)
-    .on((x) => x === 8, () => `${setOpcodeModes(op, 3)}08`)
-    .on((x) => x === 9, () => `${setOpcodeModes(op, 1)}09`)
-    .on((x) => x === 99, () => '99')
-    .otherwise((x) => { throw new Error(`Unsupported opcode ${x}`); })
-);
+const opcodeFuncs = {
+  1: (opcode) => `${setOpcodeModes(opcode, 3)}01`,
+  2: (opcode) => `${setOpcodeModes(opcode, 3)}02`,
+  3: (opcode) => `${setOpcodeModes(opcode, 1)}03`,
+  4: (opcode) => `${setOpcodeModes(opcode, 1)}04`,
+  5: (opcode) => `${setOpcodeModes(opcode, 2)}05`,
+  6: (opcode) => `${setOpcodeModes(opcode, 2)}06`,
+  7: (opcode) => `${setOpcodeModes(opcode, 3)}07`,
+  8: (opcode) => `${setOpcodeModes(opcode, 3)}08`,
+  9: (opcode) => `${setOpcodeModes(opcode, 1)}09`,
+  99: () => '99',
+};
+const standardizeOpcode = (op) => opcodeFuncs[Number(getOpcodeId(op))](op);
 
 const getOpcode1Parameters = (runnable, modes) => [
   getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
@@ -185,50 +192,50 @@ const getOpcode9Parameters = (runnable, modes) => [
   getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
 ];
 
-const getInstruction = (runnable) => (
-  match(standardizeOpcode(String(getValueInMemory(runnable, 0))))
-    .on((x) => getOpcodeId(x) === '01', (x) => ({
-      operation: opcode1,
-      parameters: getOpcode1Parameters(runnable, getOpcodeModes(x)),
-    }))
-    .on((x) => getOpcodeId(x) === '02', (x) => ({
-      operation: opcode2,
-      parameters: getOpcode2Parameters(runnable, getOpcodeModes(x)),
-    }))
-    .on((x) => getOpcodeId(x) === '03', (x) => ({
-      operation: opcode3,
-      parameters: getOpcode3Parameters(runnable, getOpcodeModes(x)),
-    }))
-    .on((x) => getOpcodeId(x) === '04', (x) => ({
-      operation: opcode4,
-      parameters: getOpcode4Parameters(runnable, getOpcodeModes(x)),
-    }))
-    .on((x) => getOpcodeId(x) === '05', (x) => ({
-      operation: opcode5,
-      parameters: getOpcode5Parameters(runnable, getOpcodeModes(x)),
-    }))
-    .on((x) => getOpcodeId(x) === '06', (x) => ({
-      operation: opcode6,
-      parameters: getOpcode6Parameters(runnable, getOpcodeModes(x)),
-    }))
-    .on((x) => getOpcodeId(x) === '07', (x) => ({
-      operation: opcode7,
-      parameters: getOpcode7Parameters(runnable, getOpcodeModes(x)),
-    }))
-    .on((x) => getOpcodeId(x) === '08', (x) => ({
-      operation: opcode8,
-      parameters: getOpcode8Parameters(runnable, getOpcodeModes(x)),
-    }))
-    .on((x) => getOpcodeId(x) === '09', (x) => ({
-      operation: opcode9,
-      parameters: getOpcode9Parameters(runnable, getOpcodeModes(x)),
-    }))
-    .on((x) => getOpcodeId(x) === '99', () => ({
-      operation: opcode99,
-      parameters: [],
-    }))
-    .otherwise((x) => { throw new Error(`Invalid opcode ${x}`); })
-);
+const instructions = {
+  '01': (runnable, modes) => ({
+    operation: opcode1,
+    parameters: getOpcode1Parameters(runnable, modes),
+  }),
+  '02': (runnable, modes) => ({
+    operation: opcode2,
+    parameters: getOpcode2Parameters(runnable, modes),
+  }),
+  '03': (runnable, modes) => ({
+    operation: opcode3,
+    parameters: getOpcode3Parameters(runnable, modes),
+  }),
+  '04': (runnable, modes) => ({
+    operation: opcode4,
+    parameters: getOpcode4Parameters(runnable, modes),
+  }),
+  '05': (runnable, modes) => ({
+    operation: opcode5,
+    parameters: getOpcode5Parameters(runnable, modes),
+  }),
+  '06': (runnable, modes) => ({
+    operation: opcode6,
+    parameters: getOpcode6Parameters(runnable, modes),
+  }),
+  '07': (runnable, modes) => ({
+    operation: opcode7,
+    parameters: getOpcode7Parameters(runnable, modes),
+  }),
+  '08': (runnable, modes) => ({
+    operation: opcode8,
+    parameters: getOpcode8Parameters(runnable, modes),
+  }),
+  '09': (runnable, modes) => ({
+    operation: opcode9,
+    parameters: getOpcode9Parameters(runnable, modes),
+  }),
+  99: () => ({ operation: opcode99, parameters: [] }),
+};
+const getInstruction = (runnable) => {
+  const opcode = standardizeOpcode(String(getValueInMemory(runnable, 0)));
+
+  return instructions[getOpcodeId(opcode)](runnable, getOpcodeModes(opcode));
+};
 
 const runNextInstruction = pipe(
   (runnable) => ({ runnable, ...getInstruction(runnable) }),
