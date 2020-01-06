@@ -17,7 +17,7 @@ const initializeInput = pipe(
 
 function* getPattern(outputPosition) {
   const pattern = [0, 1, 0, -1];
-  let i = 1;
+  let i = outputPosition;
 
   while (true) {
     yield pattern[Math.floor(i / outputPosition) % 4];
@@ -34,7 +34,7 @@ const transformNum = (_, i, input) => {
   return getOnesDigit(reduce(
     (sum, n) => sum + n * pattern.next().value,
     0,
-    input,
+    input.slice(i),
   ));
 };
 
@@ -54,4 +54,7 @@ module.exports = {
   main,
   initializeInput,
   getPattern,
+  applyPhases,
+  getFirstEight,
+  getOnesDigit,
 };
