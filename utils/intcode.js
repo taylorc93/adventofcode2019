@@ -1,5 +1,3 @@
-const { pipe } = require('./functional');
-
 const updateMemory = ({ position, value, memory }) => {
   // This is a performance optimization that requires less cloning + slicing
   // for cases when we do not need to allocate more memory.
@@ -16,7 +14,6 @@ const updateMemory = ({ position, value, memory }) => {
   ];
 };
 
-
 const statuses = {
   READY: 'R',
   NEEDS_INPUT: 'NI',
@@ -31,10 +28,6 @@ const generateRunnable = (memory) => ({
   status: statuses.READY, // The status of the program
 });
 
-const getValueInMemory = (runnable, offset) => (
-  runnable.memory[runnable.head + offset]
-);
-
 // If a parameter is used for a write location (eg. the 3rd parameter in opcode
 // 1), we need to handle it's differently
 const positionMode = (runnable, parameter, write) => write
@@ -45,6 +38,7 @@ const relativeMode = (runnable, parameter, write) => write
   ? runnable.relative + parameter
   : runnable.memory[runnable.relative + parameter] || 0;
 
+const getMode = (opcode, n) => Math.floor((opcode / 10 ** (n + 2)) % 10);
 const modeHandlers = {
   0: positionMode,
   1: immediateMode,
@@ -53,206 +47,137 @@ const modeHandlers = {
 const getValueForMode = (runnable, mode, parameter, write = false) => (
   modeHandlers[mode](runnable, parameter, write)
 );
-
-const opcode1 = ({ runnable, parameters }) => ({
-  ...runnable,
-  head: runnable.head + 4,
-  memory: updateMemory({
-    position: parameters[2],
-    value: parameters[1] + parameters[0],
-    memory: runnable.memory,
-  }),
-});
-const opcode2 = ({ runnable, parameters }) => ({
-  ...runnable,
-  head: runnable.head + 4,
-  memory: updateMemory({
-    position: parameters[2],
-    value: parameters[1] * parameters[0],
-    memory: runnable.memory,
-  }),
-});
-const opcode3 = ({ runnable, parameters }) => (
-  runnable.input.length > 0
-    ? {
-      ...runnable,
-      head: runnable.head + 2,
-      memory: updateMemory({
-        position: parameters[0],
-        value: runnable.input[0],
-        memory: runnable.memory,
-      }),
-      input: runnable.input.slice(1),
-      status: statuses.READY,
-    } : {
-      ...runnable,
-      status: statuses.NEEDS_INPUT,
-    }
-);
-const opcode4 = ({ runnable, parameters }) => ({
-  ...runnable,
-  head: runnable.head + 2,
-  output: [...runnable.output, parameters[0]],
-});
-const opcode5 = ({ runnable, parameters }) => ({
-  ...runnable,
-  head: parameters[0] !== 0
-    ? parameters[1]
-    : runnable.head + 3,
-});
-const opcode6 = ({ runnable, parameters }) => ({
-  ...runnable,
-  head: parameters[0] === 0
-    ? parameters[1]
-    : runnable.head + 3,
-});
-const opcode7 = ({ runnable, parameters }) => ({
-  ...runnable,
-  head: runnable.head + 4,
-  memory: updateMemory({
-    position: parameters[2],
-    value: parameters[0] < parameters[1] ? 1 : 0,
-    memory: runnable.memory,
-  }),
-});
-const opcode8 = ({ runnable, parameters }) => ({
-  ...runnable,
-  head: runnable.head + 4,
-  memory: updateMemory({
-    position: parameters[2],
-    value: parameters[0] === parameters[1] ? 1 : 0,
-    memory: runnable.memory,
-  }),
-});
-const opcode9 = ({ runnable, parameters }) => ({
-  ...runnable,
-  head: runnable.head + 2,
-  relative: runnable.relative + parameters[0],
-});
-const opcode99 = ({ runnable }) => ({
-  ...runnable,
-  status: statuses.FINISHED,
-});
-
-const getOpcodeId = (op) => op.slice(op.length - 2, op.length);
-const getOpcodeModes = (op) => op.slice(0, op.length - 2).split('').reverse();
-const setOpcodeModes = (op, numParams) => (
-  `${op.slice(0, op.length - 2).padStart(numParams, '0')}`
-);
-
-const opcodeFuncs = {
-  1: (opcode) => `${setOpcodeModes(opcode, 3)}01`,
-  2: (opcode) => `${setOpcodeModes(opcode, 3)}02`,
-  3: (opcode) => `${setOpcodeModes(opcode, 1)}03`,
-  4: (opcode) => `${setOpcodeModes(opcode, 1)}04`,
-  5: (opcode) => `${setOpcodeModes(opcode, 2)}05`,
-  6: (opcode) => `${setOpcodeModes(opcode, 2)}06`,
-  7: (opcode) => `${setOpcodeModes(opcode, 3)}07`,
-  8: (opcode) => `${setOpcodeModes(opcode, 3)}08`,
-  9: (opcode) => `${setOpcodeModes(opcode, 1)}09`,
-  99: () => '99',
-};
-const standardizeOpcode = (op) => opcodeFuncs[Number(getOpcodeId(op))](op);
-
-const getOpcode1Parameters = (runnable, modes) => [
-  getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
-  getValueForMode(runnable, modes[1], getValueInMemory(runnable, 2)),
-  getValueForMode(runnable, modes[2], getValueInMemory(runnable, 3), true),
-];
-const getOpcode2Parameters = (runnable, modes) => [
-  getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
-  getValueForMode(runnable, modes[1], getValueInMemory(runnable, 2)),
-  getValueForMode(runnable, modes[2], getValueInMemory(runnable, 3), true),
-];
-const getOpcode3Parameters = (runnable, modes) => [
-  getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1), true),
-];
-const getOpcode4Parameters = (runnable, modes) => [
-  getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
-];
-const getOpcode5Parameters = (runnable, modes) => [
-  getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
-  getValueForMode(runnable, modes[1], getValueInMemory(runnable, 2)),
-];
-const getOpcode6Parameters = (runnable, modes) => [
-  getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
-  getValueForMode(runnable, modes[1], getValueInMemory(runnable, 2)),
-];
-const getOpcode7Parameters = (runnable, modes) => [
-  getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
-  getValueForMode(runnable, modes[1], getValueInMemory(runnable, 2)),
-  getValueForMode(runnable, modes[2], getValueInMemory(runnable, 3), true),
-];
-const getOpcode8Parameters = (runnable, modes) => [
-  getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
-  getValueForMode(runnable, modes[1], getValueInMemory(runnable, 2)),
-  getValueForMode(runnable, modes[2], getValueInMemory(runnable, 3), true),
-];
-const getOpcode9Parameters = (runnable, modes) => [
-  getValueForMode(runnable, modes[0], getValueInMemory(runnable, 1)),
-];
-
 const instructions = {
-  '01': (runnable, modes) => ({
-    operation: opcode1,
-    parameters: getOpcode1Parameters(runnable, modes),
-  }),
-  '02': (runnable, modes) => ({
-    operation: opcode2,
-    parameters: getOpcode2Parameters(runnable, modes),
-  }),
-  '03': (runnable, modes) => ({
-    operation: opcode3,
-    parameters: getOpcode3Parameters(runnable, modes),
-  }),
-  '04': (runnable, modes) => ({
-    operation: opcode4,
-    parameters: getOpcode4Parameters(runnable, modes),
-  }),
-  '05': (runnable, modes) => ({
-    operation: opcode5,
-    parameters: getOpcode5Parameters(runnable, modes),
-  }),
-  '06': (runnable, modes) => ({
-    operation: opcode6,
-    parameters: getOpcode6Parameters(runnable, modes),
-  }),
-  '07': (runnable, modes) => ({
-    operation: opcode7,
-    parameters: getOpcode7Parameters(runnable, modes),
-  }),
-  '08': (runnable, modes) => ({
-    operation: opcode8,
-    parameters: getOpcode8Parameters(runnable, modes),
-  }),
-  '09': (runnable, modes) => ({
-    operation: opcode9,
-    parameters: getOpcode9Parameters(runnable, modes),
-  }),
-  99: () => ({ operation: opcode99, parameters: [] }),
+  1: (r, opcode) => {
+    const parameters = [
+      getValueForMode(r, getMode(opcode, 0), r.memory[r.head + 1]),
+      getValueForMode(r, getMode(opcode, 1), r.memory[r.head + 2]),
+      getValueForMode(r, getMode(opcode, 2), r.memory[r.head + 3], true),
+    ];
+
+    return {
+      ...r,
+      head: r.head + 4,
+      memory: updateMemory({
+        position: parameters[2],
+        value: parameters[1] + parameters[0],
+        memory: r.memory,
+      }),
+    };
+  },
+  2: (r, opcode) => {
+    const parameters = [
+      getValueForMode(r, getMode(opcode, 0), r.memory[r.head + 1]),
+      getValueForMode(r, getMode(opcode, 1), r.memory[r.head + 2]),
+      getValueForMode(r, getMode(opcode, 2), r.memory[r.head + 3], true),
+    ];
+
+    return {
+      ...r,
+      head: r.head + 4,
+      memory: updateMemory({
+        position: parameters[2],
+        value: parameters[1] * parameters[0],
+        memory: r.memory,
+      }),
+    };
+  },
+  3: (r, opcode) => {
+    const parameters = [
+      getValueForMode(r, getMode(opcode, 0), r.memory[r.head + 1], true),
+    ];
+
+    return r.input.length > 0
+      ? {
+        ...r,
+        head: r.head + 2,
+        memory: updateMemory({
+          position: parameters[0],
+          value: r.input[0],
+          memory: r.memory,
+        }),
+        input: r.input.slice(1),
+        status: statuses.READY,
+      } : {
+        ...r,
+        status: statuses.NEEDS_INPUT,
+      };
+  },
+  4: (r, opcode) => {
+    const parameters = [
+      getValueForMode(r, getMode(opcode, 0), r.memory[r.head + 1]),
+    ];
+
+    return {
+      ...r,
+      head: r.head + 2,
+      output: [...r.output, parameters[0]],
+    };
+  },
+  5: (r, opcode) => {
+    const parameters = [
+      getValueForMode(r, getMode(opcode, 0), r.memory[r.head + 1]),
+      getValueForMode(r, getMode(opcode, 1), r.memory[r.head + 2]),
+    ];
+
+    return { ...r, head: parameters[0] !== 0 ? parameters[1] : r.head + 3 };
+  },
+  6: (r, opcode) => {
+    const parameters = [
+      getValueForMode(r, getMode(opcode, 0), r.memory[r.head + 1]),
+      getValueForMode(r, getMode(opcode, 1), r.memory[r.head + 2]),
+    ];
+
+    return { ...r, head: parameters[0] === 0 ? parameters[1] : r.head + 3 };
+  },
+  7: (r, opcode) => {
+    const parameters = [
+      getValueForMode(r, getMode(opcode, 0), r.memory[r.head + 1]),
+      getValueForMode(r, getMode(opcode, 1), r.memory[r.head + 2]),
+      getValueForMode(r, getMode(opcode, 2), r.memory[r.head + 3], true),
+    ];
+
+    return {
+      ...r,
+      head: r.head + 4,
+      memory: updateMemory({
+        position: parameters[2],
+        value: parameters[0] < parameters[1] ? 1 : 0,
+        memory: r.memory,
+      }),
+    };
+  },
+  8: (r, opcode) => {
+    const parameters = [
+      getValueForMode(r, getMode(opcode, 0), r.memory[r.head + 1]),
+      getValueForMode(r, getMode(opcode, 1), r.memory[r.head + 2]),
+      getValueForMode(r, getMode(opcode, 2), r.memory[r.head + 3], true),
+    ];
+
+    return {
+      ...r,
+      head: r.head + 4,
+      memory: updateMemory({
+        position: parameters[2],
+        value: parameters[0] === parameters[1] ? 1 : 0,
+        memory: r.memory,
+      }),
+    };
+  },
+  9: (r, opcode) => {
+    const parameters = [
+      getValueForMode(r, getMode(opcode, 0), r.memory[r.head + 1]),
+    ];
+
+    return { ...r, head: r.head + 2, relative: r.relative + parameters[0] };
+  },
+  99: (r) => ({ ...r, status: statuses.FINISHED }),
 };
-const getInstruction = (runnable) => {
-  const opcode = standardizeOpcode(String(getValueInMemory(runnable, 0)));
+const runNextInstruction = (runnable) => {
+  const opcode = runnable.memory[runnable.head];
 
-  return instructions[getOpcodeId(opcode)](runnable, getOpcodeModes(opcode));
+  return instructions[opcode % 100](runnable, opcode);
 };
-
-const runNextInstruction = pipe(
-  (runnable) => ({ runnable, ...getInstruction(runnable) }),
-  ({ runnable, operation, parameters }) => operation({
-    runnable,
-    parameters,
-  }),
-);
-
-const provideInput = (runnable, ...input) => ({
-  ...runnable,
-  input: runnable.input.length
-    ? [...runnable.input, ...input]
-    : input,
-});
-
-const resetOutput = (runnable) => ({ ...runnable, output: [] });
 
 // The original implementation of `runProgram` used recursion but ran into stack
 // overflow errors on larger intcode programs (eg. 9b).
@@ -269,11 +194,17 @@ const runProgram = (runnable) => {
   return current;
 };
 
+const provideInput = (runnable, ...input) => ({
+  ...runnable,
+  input: [...runnable.input, ...input],
+});
+
+const resetOutput = (runnable) => ({ ...runnable, output: [] });
+
 module.exports = {
   generateRunnable,
   updateMemory,
   runProgram,
-  standardizeOpcode,
   provideInput,
   resetOutput,
   statuses,
