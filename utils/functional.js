@@ -17,6 +17,12 @@ const flatten = (items) => reduce(
   items,
 );
 
+const swap = (obj) => reduce(
+  (swapped, key) => ({ ...swapped, [obj[key]]: key }),
+  {},
+  Object.keys(obj),
+);
+
 const chunk = (size, items) => reduce(
   (chunks, item) => chunks.length && chunks[chunks.length - 1].length < size
     ? [...chunks.slice(0, chunks.length - 1), [...chunks[chunks.length - 1], item]]
@@ -71,6 +77,7 @@ module.exports = {
   zip,
   flatten,
   updateAtIndex,
+  swap,
   curriedMap,
   filter,
   chunk,
