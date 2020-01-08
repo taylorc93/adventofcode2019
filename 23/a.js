@@ -14,6 +14,7 @@ const {
   generateRunnable,
   provideInput,
   runProgram,
+  resetOutput,
 } = require('../utils/intcode');
 
 const getInputFilePath = () => path.join(__dirname, 'input.txt');
@@ -32,10 +33,10 @@ const initializeNetworkState = pipe(
   splitByComma,
   curriedMap(Number),
   curry(generateComputers)(50),
-  (computers) => ({ computers, packet255Value: null }),
+  (computers) => ({ computers, packet255: null, queue: [] }),
 );
 
-const processNextPackets = (network) => ({
+const processInput = (network) => ({
   ...network,
   computers: map(
     (c) => match(c.program.input)
@@ -51,61 +52,65 @@ const processNextPackets = (network) => ({
   ),
 });
 
-const sendPacket = (network, computer, [address, x, y]) => {
-  if (address === 255) {
-    return { ...network, packet255Value: y };
-  }
+const updateComputers = (computers, newComputer) => [
+  ...computers.slice(0, newComputer.address),
+  newComputer,
+  ...computers.slice(newComputer.address + 1),
+];
 
-  const receivingComputer = network.computers.find((c) => c.address === address);
-  const updatedReceiver = [
-    ...network.computers.slice(0, address),
-    {
-      ...receivingComputer,
-      program: provideInput(receivingComputer.program, x, y),
-    },
-    ...network.computers.slice(address + 1),
-  ];
-
-  return {
-    ...network,
-    computers: [
-      ...updatedReceiver.slice(0, computer.address),
-      {
-        ...computer,
-        program: {
-          ...computer.program,
-          output: computer.program.output.slice(3),
-        },
-      },
-      ...updatedReceiver.slice(computer.address + 1),
+const updatePacketQueue = (network) => reduce(
+  (currentNetwork, c) => ({
+    ...currentNetwork,
+    computers: updateComputers(
+      currentNetwork.computers,
+      { ...c, program: resetOutput(c.program) },
+    ),
+    queue: [
+      ...currentNetwork.queue,
+      ...chunk(3, c.program.output),
     ],
-  };
-};
-
-const sendPackets = (network) => reduce(
-  (currentNetwork, c) => match(chunk(3, c.program.output))
-    .on(
-      (packets) => packets.length > 0,
-      (packets) => sendPacket(currentNetwork, c, packets[0]),
-    )
-    .otherwise(() => currentNetwork),
+  }),
   network,
   network.computers,
 );
 
+const sendPackets = (network) => reduce(
+  (currentNetwork, [address, ...vals]) => {
+    if (address === 255) {
+      return { ...network, packet255: vals };
+    }
+
+    const receiver = currentNetwork.computers.find(
+      (c) => c.address === address,
+    );
+
+    return {
+      ...currentNetwork,
+      computers: updateComputers(
+        currentNetwork.computers,
+        { ...receiver, program: provideInput(receiver.program, ...vals) },
+      ),
+      queue: currentNetwork.queue.slice(1),
+    };
+  },
+  network,
+  network.queue,
+);
+
 const runNextTick = pipe(
-  processNextPackets,
+  processInput,
+  updatePacketQueue,
   sendPackets,
 );
 
 const runUntilPacket255 = (network) => {
   let current = network;
 
-  while (current.packet255Value === null) {
+  while (current.packet255 === null) {
     current = runNextTick(current);
   }
 
-  return current.packet255Value;
+  return current.packet255[1];
 };
 
 const main = pipe(
@@ -116,5 +121,8 @@ const main = pipe(
 module.exports = {
   main,
   initializeNetworkState,
+  processInput,
+  sendPackets,
+  updatePacketQueue,
   runUntilPacket255,
 };
