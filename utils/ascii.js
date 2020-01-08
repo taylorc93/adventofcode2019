@@ -98,7 +98,7 @@ const ASCII_TO_TEXT = {
 };
 const TEXT_TO_ASCII = swap(ASCII_TO_TEXT);
 
-const charToAscii = (c) => TEXT_TO_ASCII[c];
+const charToAscii = (c) => Number(TEXT_TO_ASCII[c]);
 const asciiToChar = (a) => ASCII_TO_TEXT[a];
 
 module.exports = {

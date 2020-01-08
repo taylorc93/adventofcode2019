@@ -1,3 +1,5 @@
+const { asciiToChar } = require('./ascii');
+
 const updateMemory = ({ position, value, memory }) => {
   // This is a performance optimization that requires less cloning + slicing
   // for cases when we do not need to allocate more memory.
@@ -201,6 +203,11 @@ const provideInput = (runnable, ...input) => ({
 
 const resetOutput = (runnable) => ({ ...runnable, output: [] });
 
+const renderAsciiOutput = (p) => { // eslint-disable-line
+  console.clear();
+  process.stdout.write(p.output.map(asciiToChar).join(''));
+};
+
 module.exports = {
   generateRunnable,
   updateMemory,
@@ -208,4 +215,5 @@ module.exports = {
   provideInput,
   resetOutput,
   statuses,
+  renderAsciiOutput,
 };
