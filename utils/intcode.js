@@ -203,8 +203,11 @@ const provideInput = (runnable, ...input) => ({
 
 const resetOutput = (runnable) => ({ ...runnable, output: [] });
 
-const renderAsciiOutput = (p) => { // eslint-disable-line
-  console.clear();
+const renderAsciiOutput = (p, clearConsole = true) => { // eslint-disable-line
+  if (clearConsole) {
+    console.clear();
+  }
+
   process.stdout.write(p.output.map(asciiToChar).join(''));
 };
 
